@@ -1,0 +1,256 @@
+/*
+ * Shared notification bell/inbox styling — used by the admin panel and
+ * hotel portal (the guest-facing bell in includes/user_top_navbar.php has
+ * its own copy of these same rules inline, predating this shared file).
+ * Pair with assets/js/travelix_portal_notifications.js.
+ */
+
+.travelix-notification-wrapper {
+    position: relative;
+}
+
+.travelix-notification-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.14);
+    border: none;
+    color: #fff;
+    font-size: 19px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.travelix-notification-btn:hover {
+    background: rgba(255,255,255,0.24);
+}
+
+.travelix-notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -2px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+
+.travelix-notification-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 410px;
+    max-width: calc(100vw - 32px);
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    display: none;
+    overflow: hidden;
+    z-index: 2500;
+    color: #0f172a;
+}
+
+.travelix-notification-panel.show {
+    display: block;
+}
+
+.travelix-notification-header {
+    padding: 18px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.travelix-notification-header h6 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.travelix-notification-count-text {
+    color: #1484B4;
+    font-weight: 800;
+    font-size: 13.5px;
+}
+
+.travelix-notification-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.travelix-refresh-notification-btn,
+.travelix-read-all-btn {
+    border: none;
+    background: transparent;
+    color: #1484B4;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.travelix-refresh-notification-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(20,132,180,0.10);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.travelix-refresh-notification-btn:hover {
+    background: rgba(20,132,180,0.18);
+}
+
+.travelix-refresh-notification-btn.loading i {
+    animation: travelixNotifSpin 0.7s linear infinite;
+}
+
+@keyframes travelixNotifSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.travelix-notification-list {
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(20,132,180,0.55) #eef7fb;
+}
+
+.travelix-notification-list::-webkit-scrollbar {
+    width: 7px;
+}
+
+.travelix-notification-list::-webkit-scrollbar-track {
+    background: #eef7fb;
+    border-radius: 20px;
+}
+
+.travelix-notification-list::-webkit-scrollbar-thumb {
+    background: rgba(20,132,180,0.55);
+    border-radius: 20px;
+}
+
+.travelix-notification-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+    padding: 15px 30px 15px 18px;
+    border-bottom: 1px solid #eef2f7;
+    background: #fff;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.travelix-notification-item:hover {
+    background: #f8fafc;
+}
+
+/* Visual cue that the row itself is clickable (jumps to the linked page) —
+   separate from the Read/Delete buttons below the text. */
+.travelix-notification-item-chevron {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #cbd5e1;
+    font-size: 12px;
+    transition: color .15s ease, transform .15s ease;
+}
+
+.travelix-notification-item:hover .travelix-notification-item-chevron {
+    color: #1484B4;
+    transform: translateY(-50%) translateX(2px);
+}
+
+.travelix-notification-item.unread {
+    background: #f0faff;
+}
+
+.travelix-notification-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #eaf7fc;
+    color: #1484B4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+}
+
+.travelix-notification-title {
+    color: #0f172a;
+    font-size: 14.5px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.travelix-notification-message {
+    color: #64748b;
+    font-size: 13.5px;
+    line-height: 1.45;
+    margin-bottom: 6px;
+}
+
+.travelix-notification-time {
+    color: #4f5b6d;
+    font-size: 11.5px;
+    font-weight: 800;
+}
+
+.travelix-notification-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 9px;
+    flex-wrap: wrap;
+}
+
+.travelix-notification-action-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 11.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.travelix-mark-read-btn {
+    background: #ecfdf5;
+    color: #166534;
+}
+
+.travelix-delete-notification-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.travelix-notification-empty {
+    padding: 32px 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+@media (max-width: 480px) {
+    .travelix-notification-panel {
+        right: -60px;
+        width: min(94vw, 380px);
+    }
+}

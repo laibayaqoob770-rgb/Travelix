@@ -1,0 +1,70 @@
+/*
+ * Shared lightweight "3D" visual layer for Travelix — CSS-transform based
+ * tilt cards and mousemove hero parallax. No WebGL/Three.js: cheap enough
+ * to run everywhere, including mobile. Paired with
+ * assets/js/travelix_3d_effects.js.
+ *
+ * The site-wide button press/lift effect lives in includes/user_top_navbar.php
+ * instead of here, since that include (unlike this file) is already loaded
+ * on nearly every page — see that file for the button rules.
+ */
+
+/* ── Tilt cards (destination cards, hotel result cards) ── */
+.tilt-card {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --glare-x: 50%;
+    --glare-y: 50%;
+    --glare-opacity: 0;
+    transform-style: preserve-3d;
+    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+    transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease;
+    will-change: transform;
+    position: relative;
+}
+
+.tilt-card.tilt-active {
+    transition: transform .05s linear;
+}
+
+.tilt-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--glare-x) var(--glare-y), rgba(255,255,255,.35), transparent 60%);
+    opacity: var(--glare-opacity);
+    transition: opacity .35s ease;
+    z-index: 2;
+}
+
+.tilt-card:hover {
+    box-shadow: 0 26px 46px rgba(15,23,42,.18);
+}
+
+/* ── Hero parallax (mousemove-driven layer shift) ──
+   Deliberately no overflow:hidden here — shift amounts are small enough
+   (see MAX depth usage) that clipping isn't needed, and forcing it site-wide
+   would risk cutting off things like dropdown menus positioned inside a
+   hero (e.g. a city-search autocomplete list). Pages whose background
+   specifically needs clipping already set their own overflow:hidden. */
+.parallax-layer {
+    transition: transform .2s ease-out;
+    will-change: transform;
+}
+
+/* ── Respect reduced-motion preference: kill every effect above ── */
+@media (prefers-reduced-motion: reduce) {
+    .tilt-card {
+        transform: none !important;
+        transition: none !important;
+    }
+    .tilt-card::after {
+        display: none;
+    }
+    .parallax-layer {
+        transform: none !important;
+        transition: none !important;
+    }
+}
