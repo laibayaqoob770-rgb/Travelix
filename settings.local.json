@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(& \"C:\\\\Users\\\\sadda\\\\Desktop\\\\iop\\\\apache\\\\bin\\\\httpd.exe\" -t 2>&1)",
-      "PowerShell(try { $response = Invoke-WebRequest -Uri \"http://localhost\" -UseBasicParsing -TimeoutSec 5; \"Apache is running! Status: $\\($response.StatusCode\\)\" } catch { \"Error: $\\($_.Exception.Message\\)\" })",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
-    ]
-  }
-}
