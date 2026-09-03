@@ -573,6 +573,23 @@ $profileImage = (string)($currentUser['profile_image'] ?? ($baseUrl . '/images/d
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving to Firebase...';
 
+        // A hotel with the same name shouldn't exist twice — catches
+        // accidental double-submits as well as re-adding an existing hotel.
+        try {
+            const nameKey = name.toLowerCase();
+            const existingSnap = await db.collection('hotels').get();
+            const dupe = existingSnap.docs.find(d => String(d.data().name || '').trim().toLowerCase() === nameKey);
+            if (dupe) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Save Hotel to Firebase — Goes Live Instantly';
+                Swal.fire({ icon:'warning', title:'Hotel Already Exists', text:`A hotel named "${name}" is already in the system. Use a different name, or edit the existing hotel instead.`, confirmButtonColor:'#2d6af0' });
+                return;
+            }
+        } catch (dupeErr) {
+            // If the check itself fails (e.g. offline), don't block saving
+            // entirely — just proceed without the safety net this time.
+        }
+
         const { lat, lng } = parseLatLng(latlngEl.value);
         const citySlug = city.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
 

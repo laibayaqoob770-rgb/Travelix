@@ -120,6 +120,23 @@ try {
                 $flash=['type'=>'success','msg'=>"\"{$hotelName}\" is now ".($newStatus==='active'?'active.':'inactive.')];
             }
         }
+
+        if ($action==='delete_city_hotel') {
+            $slug=trim($_POST['slug']??''); $idx=(int)($_POST['hotel_index']??-1);
+            $url ="https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/hotel_destinations/{$slug}";
+            [$st,$res]=fsReq('GET',$url,$token); $doc=json_decode($res,true);
+            $cityDoc=parseCityDoc($doc); $hotels=$cityDoc['hotels'];
+            if (isset($hotels[$idx])) {
+                $hotelName=$hotels[$idx]['name']??'Hotel';
+                array_splice($hotels, $idx, 1);
+                $payload=['fields'=>['city'=>['stringValue'=>$cityDoc['city']],'slug'=>['stringValue'=>$cityDoc['slug']],
+                    'center'=>['mapValue'=>['fields'=>['lat'=>['doubleValue'=>(float)$cityDoc['center']['lat']],'lng'=>['doubleValue'=>(float)$cityDoc['center']['lng']]]]],
+                    'hotels'=>['arrayValue'=>['values'=>buildHotelValues($hotels)]],'source'=>['stringValue'=>'admin_panel'],
+                    'updatedAt'=>['timestampValue'=>gmdate('c')]]];
+                fsReq('PATCH',$url,$token,$payload);
+                $flash=['type'=>'success','msg'=>"\"{$hotelName}\" has been deleted."];
+            }
+        }
     }
 
     /* ── Load city-based hotels from hotel_destinations ── */
@@ -326,6 +343,13 @@ tbody tr:hover td{background:#fafbff;}
     <input type="hidden" name="new_status" id="ts_status">
 </form>
 
+<!-- Hidden PHP form for city-hotel deletion -->
+<form method="POST" id="deleteCityHotelForm" style="display:none;">
+    <input type="hidden" name="action" value="delete_city_hotel">
+    <input type="hidden" name="slug" id="dc_slug">
+    <input type="hidden" name="hotel_index" id="dc_index">
+</form>
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -517,8 +541,11 @@ function renderTable(hotels) {
 
         const isActive = h.status === 'active';
         const toggleBtn = h._source==='portal'
-            ? `<button class="abtn ${isActive?'abtn-disable':'abtn-enable'}" title="${isActive?'Disable':'Enable'}" onclick="togglePortalStatus('${h._docId}','${esc(h.name)}','${h.status}')"><i class="fas ${isActive?'fa-ban':'fa-check'}"></i></button>`
-            : `<button class="abtn ${isActive?'abtn-disable':'abtn-enable'}" title="${isActive?'Disable':'Enable'}" onclick="toggleCityStatus('${esc(h._city_slug)}',${h._hotel_index},'${esc(h.name)}','${h.status}')"><i class="fas ${isActive?'fa-ban':'fa-check'}"></i></button>`;
+            ? `<button class="abtn ${isActive?'abtn-disable':'abtn-enable'}" title="${isActive?'Disable':'Enable'}" onclick="togglePortalStatus('${h._docId}','${escJs(h.name)}','${h.status}')"><i class="fas ${isActive?'fa-ban':'fa-check'}"></i></button>`
+            : `<button class="abtn ${isActive?'abtn-disable':'abtn-enable'}" title="${isActive?'Disable':'Enable'}" onclick="toggleCityStatus('${escJs(h._city_slug)}',${h._hotel_index},'${escJs(h.name)}','${h.status}')"><i class="fas ${isActive?'fa-ban':'fa-check'}"></i></button>`;
+        const deleteBtn = h._source==='portal'
+            ? `<button class="abtn abtn-disable" title="Delete" onclick="deletePortalHotel('${h._docId}','${escJs(h.name)}')"><i class="fas fa-trash"></i></button>`
+            : `<button class="abtn abtn-disable" title="Delete" onclick="deleteCityHotel('${escJs(h._city_slug)}',${h._hotel_index},'${escJs(h.name)}','${escJs(h.id||'')}')"><i class="fas fa-trash"></i></button>`;
 
         return `<tr>
             <td>
@@ -548,7 +575,7 @@ function renderTable(hotels) {
                             <i class="fas fa-ban"></i> Refund SLA
                         </span>
                         ${h._source==='portal' ? `
-                            <button class="abtn" style="background:#dcfce7;color:#166534;font-size:10.5px;padding:4px 8px;margin-top:4px;white-space:nowrap;" onclick="reEnableHotel('${h._docId}','${esc(h.name)}')">
+                            <button class="abtn" style="background:#dcfce7;color:#166534;font-size:10.5px;padding:4px 8px;margin-top:4px;white-space:nowrap;" onclick="reEnableHotel('${h._docId}','${escJs(h.name)}')">
                                 <i class="fas fa-unlock"></i> Re-enable
                             </button>
                         ` : ''}
@@ -562,6 +589,7 @@ function renderTable(hotels) {
                 <div class="actions">
                     <button class="abtn abtn-view" title="View" onclick="viewHotel(${i})"><i class="fas fa-eye"></i></button>
                     ${toggleBtn}
+                    ${deleteBtn}
                 </div>
             </td>
         </tr>`;
@@ -571,6 +599,14 @@ function renderTable(hotels) {
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// For strings embedded as single-quoted JS arguments inside onclick="fn('...')"
+// handlers — esc() alone isn't enough there: an unescaped apostrophe (e.g. a
+// hotel named "Falettie's Grand Hotel") terminates the JS string early and
+// silently breaks the whole handler, so every button on that row does
+// nothing. & must be escaped first, before the other replacements introduce
+// new entities that a later &-escape would double-encode.
+function escJs(s){ return String(s||'').replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function viewHotel(idx) {
     const h = window._filteredHotels[idx]; if (!h) return;
@@ -679,6 +715,48 @@ function togglePortalStatus(docId, name, currentStatus) {
     });
 }
 
+async function deletePortalHotel(docId, name) {
+    Swal.fire({title:'Checking bookings...',allowOutsideClick:false,allowEscapeKey:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});
+
+    let bookingCount = 0;
+    try {
+        const snap = await db.collection('hotel_bookings').where('hotelId', '==', docId).get();
+        bookingCount = snap.size;
+    } catch (e) { /* if the check fails, fall through and let the delete confirm handle it */ }
+
+    if (bookingCount > 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Delete',
+            html: `<b>${name}</b> has ${bookingCount} booking(s) tied to it. Deleting the hotel would leave those bookings pointing at nothing.<br><br>Disable the hotel instead, or resolve/cancel its bookings first.`,
+            confirmButtonColor: '#133c96'
+        });
+        return;
+    }
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Delete this hotel?',
+        html: `<b>${name}</b> has no bookings, so this is safe — but it's permanent and cannot be undone. Any linked staff account will also be unlinked.`,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Permanently',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626'
+    }).then(async (r) => {
+        if (!r.isConfirmed) return;
+        try {
+            const staffSnap = await db.collection('hotel_staff').where('hotel_id', '==', docId).get();
+            const batch = db.batch();
+            staffSnap.forEach(doc => batch.delete(doc.ref));
+            batch.delete(db.collection('hotels').doc(docId));
+            await batch.commit();
+            Swal.fire({icon:'success',title:'Deleted',timer:1500,showConfirmButton:false}).then(() => location.reload());
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
 function toggleCityStatus(slug, index, name, currentStatus) {
     const goingActive = currentStatus !== 'active';
     const newStatus = goingActive ? 'active' : 'inactive';
@@ -698,6 +776,44 @@ function toggleCityStatus(slug, index, name, currentStatus) {
         document.getElementById('ts_status').value = newStatus;
         Swal.fire({title:'Updating...',allowOutsideClick:false,allowEscapeKey:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});
         document.getElementById('toggleCityStatusForm').submit();
+    });
+}
+
+async function deleteCityHotel(slug, index, name, hotelId) {
+    Swal.fire({title:'Checking bookings...',allowOutsideClick:false,allowEscapeKey:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});
+
+    let bookingCount = 0;
+    if (hotelId) {
+        try {
+            const snap = await db.collection('hotel_bookings').where('hotelId', '==', hotelId).get();
+            bookingCount = snap.size;
+        } catch (e) { /* if the check fails, fall through and let the delete confirm handle it */ }
+    }
+
+    if (bookingCount > 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Delete',
+            html: `<b>${name}</b> has ${bookingCount} booking(s) tied to it. Deleting the hotel would leave those bookings pointing at nothing.<br><br>Disable the hotel instead, or resolve/cancel its bookings first.`,
+            confirmButtonColor: '#133c96'
+        });
+        return;
+    }
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Delete this hotel?',
+        html: `<b>${name}</b> has no bookings, so this is safe — but it's permanent and cannot be undone.`,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Permanently',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        document.getElementById('dc_slug').value  = slug;
+        document.getElementById('dc_index').value = index;
+        Swal.fire({title:'Deleting...',allowOutsideClick:false,allowEscapeKey:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});
+        document.getElementById('deleteCityHotelForm').submit();
     });
 }
 

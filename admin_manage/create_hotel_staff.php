@@ -249,9 +249,10 @@ if ($createStatus === 200 && !empty($createData['localId'])) {
 }
 
 /* ── Step 2: Email credentials directly to the staff member ── */
-$scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$loginUrl = $scheme . '://' . $host . $baseUrl . '/hotel_portal/login.php';
+// Always the real public site, never wherever this request happened to run
+// from (e.g. localhost during testing) — the recipient opens this link on
+// their own device, disconnected from whatever server sent the email.
+$loginUrl = PRODUCTION_BASE_URL . '/hotel_portal/login.php';
 
 $emailHtml  = travelixStaffCredentialEmail($email, $hotelName, $password, $loginUrl);
 $emailError = '';

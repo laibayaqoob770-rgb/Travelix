@@ -481,6 +481,29 @@ async function saveHotel() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+    // A hotel with the same name shouldn't exist twice — catches accidental
+    // double-submits (e.g. a double-click) as well as someone re-adding a
+    // hotel that's already in the system. Case-insensitive so "Capital
+    // Grande" and "capital grande" still count as the same hotel.
+    try {
+        const nameKey = name.toLowerCase();
+        const existingSnap = await db.collection('hotels').get();
+        const dupe = existingSnap.docs.find(d => {
+            if (EDIT_ID && d.id === EDIT_ID) return false;
+            return String(d.data().name || '').trim().toLowerCase() === nameKey;
+        });
+        if (dupe) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> <?= $editId ? "Update Hotel" : "Save Hotel" ?>';
+            err('fName');
+            Swal.fire({icon:'warning',title:'Hotel Already Exists',text:`A hotel named "${name}" is already in the system. Use a different name, or edit the existing hotel instead.`,confirmButtonColor:'#133c96'});
+            return;
+        }
+    } catch (dupeErr) {
+        // If the duplicate check itself fails (e.g. offline), don't block
+        // saving entirely — just proceed without the safety net this time.
+    }
+
     const latVal = document.getElementById('fLat').value;
     const lngVal = document.getElementById('fLng').value;
 
