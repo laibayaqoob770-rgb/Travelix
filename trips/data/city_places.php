@@ -1,0 +1,3 @@
+<?php
+
+echo json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
